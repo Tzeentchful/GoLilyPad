@@ -18,6 +18,7 @@ import (
 	"github.com/LilyPad/GoLilyPad/packet/minecraft"
 	"github.com/LilyPad/GoLilyPad/server/proxy/connect"
 	"github.com/LilyPad/GoLilyPad/server/proxy/auth"
+	log "github.com/Sirupsen/logrus"
 )
 
 type Session struct {
@@ -91,12 +92,28 @@ func (this *Session) Write(packet packet.Packet) (err error) {
 func (this *Session) Redirect(server *connect.Server) {
 	conn, err := net.Dial("tcp", server.Addr)
 	if err != nil {
+		log.WithFields(log.Fields{
+			"server" : "proxy",
+			"uuid" : this.uuid,
+			"ign" : this.name,
+			"ip" : this.remoteIp,
+			"from" : this.server,
+			"to" : server.Name,
+		}).Info("Failed redirect")
 		fmt.Println("Proxy server, name:", this.name, "ip:", this.remoteIp, "failed to redirect:", server.Name, "err:", err)
 		if this.Initializing() {
 			this.Disconnect("Error: Outbound Connection Mismatch")
 		}
 		return
 	}
+	log.WithFields(log.Fields{
+		"server" : "proxy",
+		"uuid" : this.uuid,
+		"ign" : this.name,
+		"ip" : this.remoteIp,
+		"from" : this.server,
+		"to" : server.Name,
+	}).Info("Redirected")
 	fmt.Println("Proxy server, name:", this.name, "ip:", this.remoteIp, "redirected:", server.Name)
 	NewSessionOutBridge(this, server, conn).Serve()
 }
@@ -381,9 +398,21 @@ func (this *Session) HandlePacket(packet packet.Packet) (err error) {
 			this.profile, authErr = auth.Authenticate(this.name, this.serverId, sharedSecret, this.server.publicKey)
 			if authErr != nil {
 				this.SetAuthenticated(false)
+				log.WithFields(log.Fields{
+					"server" : "proxy",
+					"uuid" : this.uuid,
+					"ign" : this.name,
+					"ip" : this.remoteIp,
+				}).Info("Unauthorized")
 				fmt.Println("Proxy server, failed to authorize:", this.name, "ip:", this.remoteIp, "err:", authErr)
 			} else {
 				this.SetAuthenticated(true)
+				log.WithFields(log.Fields{
+					"server" : "proxy",
+					"uuid" : this.uuid,
+					"ign" : this.name,
+					"ip" : this.remoteIp,
+				}).Info("Authorized")
 				fmt.Println("Proxy server, authorized:", this.name, "ip:", this.remoteIp)
 			}
 		} else {
@@ -429,8 +458,20 @@ func (this *Session) ErrorCaught(err error) {
 		this.server.connect.RemoveLocalPlayer(this.name, this.uuid)
 		this.server.SessionRegistry.Unregister(this)
 		if this.outBridge == nil {
+			log.WithFields(log.Fields{
+				"server" : "proxy",
+				"uuid" : this.uuid,
+				"ign" : this.name,
+				"ip" : this.remoteIp,
+			}).Info("Disconnected")
 			fmt.Println("Proxy server, name:", this.name, "ip:", this.remoteIp, "disconnected, err:", err)
 		} else {
+			log.WithFields(log.Fields{
+				"server" : "proxy",
+				"uuid" : this.uuid,
+				"ign" : this.name,
+				"ip" : this.remoteIp,
+			}).Warn("Disconnected with outBridge error: " + this.outBridge.disconnectErr)
 			fmt.Println("Proxy server, name:", this.name, "ip:", this.remoteIp, "disconnected, err:", err, "outBridgeErr:", this.outBridge.disconnectErr)
 		}
 	}

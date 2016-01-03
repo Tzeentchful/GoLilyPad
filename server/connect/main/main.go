@@ -10,6 +10,7 @@ import (
 	"strings"
 	"github.com/LilyPad/GoLilyPad/server/connect"
 	"github.com/LilyPad/GoLilyPad/server/connect/main/config"
+	log "github.com/Sirupsen/logrus"
 )
 
 var VERSION string
@@ -51,9 +52,23 @@ func main() {
 	}()
 
 	closeAll := func() {
+		log.WithFields(log.Fields{
+	    "server": "connect",
+	  }).Info("Connect stopping")
 		os.Stdin.Close()
 		server.Close()
 	}
+
+	log.SetFormatter(&log.JSONFormatter{})
+	fo, err := os.Create("connect.log")
+	if err != nil {
+        panic(err)
+			}
+	log.SetOutput(fo)
+
+	log.WithFields(log.Fields{
+    "server": "connect",
+  }).Info("Connect Started")
 
 	fmt.Println("Connect server started, version:", VERSION)
 	for {

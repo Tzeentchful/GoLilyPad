@@ -12,6 +12,7 @@ import (
 	"github.com/LilyPad/GoLilyPad/server/proxy"
 	"github.com/LilyPad/GoLilyPad/server/proxy/connect"
 	"github.com/LilyPad/GoLilyPad/server/proxy/main/config"
+	log "github.com/Sirupsen/logrus"
 )
 
 var VERSION string
@@ -65,12 +66,26 @@ func main() {
 	}()
 
 	closeAll := func() {
+		log.WithFields(log.Fields{
+			"server": "proxy",
+		}).Info("Proxy stopping")
 		close(connectDone)
 		os.Stdin.Close()
 		if server != nil {
 			server.Close()
 		}
 	}
+
+	log.SetFormatter(&log.JSONFormatter{})
+	fo, err := os.Create("proxy.log")
+	if err != nil {
+				panic(err)
+			}
+	log.SetOutput(fo)
+
+	log.WithFields(log.Fields{
+		"server": "proxy",
+	}).Info("Proxy Started")
 
 	fmt.Println("Proxy server started, version:", VERSION)
 	for {
